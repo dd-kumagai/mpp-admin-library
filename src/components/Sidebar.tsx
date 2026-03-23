@@ -1,6 +1,5 @@
-import { type HTMLAttributes, forwardRef } from "react";
-import { cn, Icon, IconButton, type IconName } from "@mpp/core";
-import logoSvg from "../assets/logo.svg";
+import { type HTMLAttributes, forwardRef, useState } from "react";
+import { cn, Icon, IconButton, Logotype, type IconName } from "@mpp/core";
 
 /* ─── Types ─── */
 
@@ -22,59 +21,96 @@ export interface SidebarProps extends HTMLAttributes<HTMLElement> {
   activePage?: string;
   /** Called when a nav item is clicked */
   onNavigate?: (page: string) => void;
+  /** Controlled expanded state */
+  expanded?: boolean;
+  /** Called when expanded state changes */
+  onExpandedChange?: (expanded: boolean) => void;
 }
 
 /* ─── Component ─── */
 
 const Sidebar = forwardRef<HTMLElement, SidebarProps>(
-  ({ className, groups, activePage, onNavigate, ...props }, ref) => {
+  (
+    {
+      className,
+      groups,
+      activePage,
+      onNavigate,
+      expanded: controlledExpanded,
+      onExpandedChange,
+      ...props
+    },
+    ref,
+  ) => {
+    const [internalExpanded, setInternalExpanded] = useState(true);
+    const expanded = controlledExpanded ?? internalExpanded;
+
+    const toggleExpanded = () => {
+      const next = !expanded;
+      setInternalExpanded(next);
+      onExpandedChange?.(next);
+    };
+
     return (
       <aside
         ref={ref}
         className={cn(
-          "w-[200px] shrink-0 bg-bg-primary-alternative flex flex-col gap-md h-screen sticky top-0",
+          "shrink-0 bg-bg-primary-alternative flex flex-col gap-md h-screen sticky top-0 transition-all duration-[var(--transition-default)]",
+          expanded ? "w-[200px] min-w-[200px]" : "w-auto",
           className,
         )}
         {...props}
       >
         {/* Logo header */}
-        <div className="flex items-center justify-between pl-[16px] pr-[8px]">
-          <div className="pt-[4px]">
-            <img src={logoSvg} alt="My Pet +" className="w-[102px] h-[28px]" />
-          </div>
-          <IconButton icon="menu" size="lg" aria-label="メニュー" className="text-text-inverse" />
+        <div
+          className={cn(
+            "flex items-center shrink-0",
+            expanded ? "justify-between pl-xs" : "justify-center",
+          )}
+        >
+          {expanded && <Logotype height={28} color="white" alt="My Pet +" className="mt-3xs" />}
+          <IconButton
+            icon="menu"
+            size="lg"
+            aria-label="メニュー"
+            className="text-text-inverse"
+            onClick={toggleExpanded}
+          />
         </div>
 
         {/* Nav groups */}
         {groups.map((group) => (
           <nav key={group.title} className="flex flex-col">
-            <div className="px-[16px] pb-[4px]">
+            <div className="px-xs pb-3xs">
               <span className="font-body font-medium text-xs leading-tight text-text-inverse">
-                {group.title}
+                {expanded ? group.title : "\u3000"}
               </span>
             </div>
             {group.items.map((item) => {
               const isActive = item.page === activePage;
               return (
-                <a
+                <button
                   key={item.label}
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault();
+                  type="button"
+                  aria-current={isActive ? "page" : undefined}
+                  onClick={() => {
                     if (item.page && onNavigate) onNavigate(item.page);
                   }}
                   className={cn(
-                    "flex items-center gap-2xs px-[16px] py-2xs",
+                    "flex items-center min-h-[40px] px-xs py-2xs cursor-pointer transition-colors duration-[var(--transition-default)]",
+                    expanded ? "gap-2xs w-full" : "justify-center",
                     isActive
-                      ? "bg-bg-neutral text-[#4772b3] font-bold"
-                      : "text-text-inverse font-medium",
+                      ? "bg-bg-neutral text-text-link"
+                      : "text-text-inverse hover:bg-white/10",
                   )}
                 >
-                  <Icon name={item.icon} size={20} />
-                  <span className="font-body text-lg leading-relaxed">
-                    {item.label}
-                  </span>
-                </a>
+                  <Icon name={item.icon} size={24} className="shrink-0" />
+                  {expanded && (
+                    <span className="font-body font-medium text-lg leading-relaxed flex-1 text-left">
+                      {item.label}
+                    </span>
+                  )}
+                </button>
               );
             })}
           </nav>
